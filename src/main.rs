@@ -1,7 +1,10 @@
+use std::env;
+
 //eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJmZGZhNDZjZTkwNGQ4MTk1MDMwMjYyZWQ4MjhkYjllYiIsInN1YmRvbWluaW8iOiJiaXBsYXMiLCJjbGllbnQiOiI2Nzc4ODZjMTQ3ZGVkYjViNzkyNjNmY2E1M2QzMzVmNTNkNWE0ZjczIiwiY3JlYXRlZCI6MTc0NDgyODA4NH0=.PLJwUmU76hknWQplS1sYZkwZcMUIXx2iuQ11+KtBOyc=
 //
 use reqwest::Client;
 use serde::{Serialize, Deserialize};
+use dotenv;
 
 #[derive(Serialize, Debug)]
 struct TokenRequest<'a> {
@@ -28,12 +31,15 @@ struct ProductResponse{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     // aqui esta o token pessoal para poder retirar o token de acesso
-    let token_str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHAiOiJmZGZhNDZjZTkwNGQ4MTk1MDMwMjYyZWQ4MjhkYjllYiIsInN1YmRvbWluaW8iOiJiaXBsYXMiLCJjbGllbnQiOiI2Nzc4ODZjMTQ3ZGVkYjViNzkyNjNmY2E1M2QzMzVmNTNkNWE0ZjczIiwiY3JlYXRlZCI6MTc0NDgyODA4NH0=.PLJwUmU76hknWQplS1sYZkwZcMUIXx2iuQ11+KtBOyc=";
+
+    dotenv::dotenv().ok();
+    let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
 
     let req_body = TokenRequest {
         grant_type: "personal",
-        personal_token: token_str,
+        personal_token: &token_str,
     };
 
     let client = Client::new();
