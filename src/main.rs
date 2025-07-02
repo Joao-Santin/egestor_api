@@ -4,6 +4,7 @@ use std::env;
 //
 use reqwest::Client;
 use serde::{Serialize, Deserialize};
+use serde_json::json;
 use dotenv;
 
 #[derive(Serialize, Debug)]
@@ -65,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let res = client
         .get("https://api.egestor.com.br/api/v1/produtos/16")
-        .bearer_auth(response.access_token)
+        .bearer_auth(&response.access_token)
         .header("Content-Type", "application/json")
         .send()
         .await?;
@@ -76,6 +77,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let body = res.text().await?;
     //println!("Status2: {}", status);
     //println!("Resposta: {}", body);
+    
+    //relatorio de composicoes retornada
+    let values_rel_comp = json!({
+        "codProds": "",
+        "categoria": "",
+        "tags": ""
+    });
+
+    let res_rel_comp = client
+        .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
+        .bearer_auth(&response.access_token)
+        .header("Content-Type", "application/json")
+        .json(&values_rel_comp)
+        .send()
+        .await?;
+    let rel_comp_status = res_rel_comp.status();
+    let rel_comp_body = res_rel_comp.text().await?;
+    println!("{}", rel_comp_status);
+    println!("{}", rel_comp_body);
+
+    let values_rel_prod = json!({
+        "tipoData": "",
+        "de": "",
+        "ate": "",
+        "tags": "",
+        "situacao": 0,
+        "cods": "",
+        "esconderValores": false,
+        "mostrarQndPerda": true
+    });
+    let res_rel_prod = client
+        .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
+        .bearer_auth(response.access_token)
+        .header("Content-Type", "application/json")
+        .json(&values_rel_prod)
+        .send()
+        .await?;
+    let rel_prod_status = res_rel_prod.status();
+    let rel_prod_body = res_rel_prod.text().await?;
+
+    println!("{}", rel_prod_status);
+    println!("{}", rel_prod_body);
 
     Ok(())
 }
