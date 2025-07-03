@@ -29,6 +29,56 @@ struct ProductResponse{
     estoque: i64,
     tipoProduto: String,
 }
+#[derive(Deserialize)]
+struct ItemProducao{
+    tipo: String,
+    #[serde(rename="codProduto")]
+    codproduto: i32,
+    #[serde(rename="IxProd")]
+    ixprod: String,
+    #[serde(rename="IcProd")]
+    icprod: String,
+    #[serde(rename="IuCom")]
+    iucom: String,
+    quant: f64,
+    #[serde(rename="pPerda")]
+    pperda: f32,
+    #[serde(rename="qntPerda")]
+    qntperda: f32,
+    #[serde(rename="custoInsumo")]
+    custoinsumo: f32,
+    #[serde(rename="custoUnit")]
+    custounit: f32,
+    #[serde(rename="custoExtra")]
+    custoextra: f32,
+    custo: f32,
+}
+#[derive(Deserialize, Debug)]
+struct Producao{
+    cod: i32,
+    insumos: Vec<ItemProducao>,
+    produto: Vec<ItemProducao>
+
+}
+#[derive(Deserialize, Debug)]
+struct Insumo{
+    #[serde(rename="codInsumo")]
+    codinsumo: String,
+    insumo: String,
+    #[serde(rename="codProprio")]
+    codproprio: String,
+    unidade: String,
+    quant: f64,
+    #[serde(rename="pPerda")]
+    pperda:f64
+}
+
+#[derive(Deserialize)]
+struct Composicao{
+    cod: String,
+    produto: String,
+    insumos: Vec<Insumo>
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,15 +142,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json(&values_rel_comp)
         .send()
         .await?;
+    
     let rel_comp_status = res_rel_comp.status();
-    let rel_comp_body = res_rel_comp.text().await?;
+    let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
+    
     println!("{}", rel_comp_status);
-    println!("{}", rel_comp_body);
 
     let values_rel_prod = json!({
-        "tipoData": "",
-        "de": "",
-        "ate": "",
+        "tipoData": "dtInicio",
+        "de": "2019-04-01",
+        "ate": "2025-07-03",
         "tags": "",
         "situacao": 0,
         "cods": "",
