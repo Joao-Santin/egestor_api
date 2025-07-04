@@ -29,7 +29,7 @@ struct ProductResponse{
     estoque: i64,
     tipoProduto: String,
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct ItemProducao{
     tipo: String,
     #[serde(rename="codProduto")]
@@ -42,16 +42,16 @@ struct ItemProducao{
     iucom: String,
     quant: f64,
     #[serde(rename="pPerda")]
-    pperda: f32,
+    pperda: f64,
     #[serde(rename="qntPerda")]
-    qntperda: f32,
+    qntperda: f64,
     #[serde(rename="custoInsumo")]
-    custoinsumo: f32,
+    custoinsumo: f64,
     #[serde(rename="custoUnit")]
-    custounit: f32,
+    custounit: f64,
     #[serde(rename="custoExtra")]
-    custoextra: f32,
-    custo: f32,
+    custoextra: f64,
+    custo: f64,
 }
 #[derive(Deserialize, Debug)]
 struct Producao{
@@ -144,9 +144,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     
     let rel_comp_status = res_rel_comp.status();
-    let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
+    let rel_comp_text = res_rel_comp.text().await?;
+    //let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
     
     println!("{}", rel_comp_status);
+    println!("{}", rel_comp_text);
 
     let values_rel_prod = json!({
         "tipoData": "dtInicio",
