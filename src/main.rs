@@ -23,7 +23,7 @@ struct TokenResponse{
 }
 #[derive(Deserialize, Debug)]
 struct ProductResponse{
-    codigo: i16,
+    codigo: i64,
     descricao: String,
     codigoProprio: String,
     estoque: i64,
@@ -33,7 +33,7 @@ struct ProductResponse{
 struct ItemProducao{
     tipo: String,
     #[serde(rename="codProduto")]
-    codproduto: i32,
+    codproduto: String,
     #[serde(rename="IxProd")]
     ixprod: String,
     #[serde(rename="IcProd")]
@@ -55,7 +55,7 @@ struct ItemProducao{
 }
 #[derive(Deserialize, Debug)]
 struct Producao{
-    cod: i32,
+    cod: String,
     insumos: Vec<ItemProducao>,
     produto: Vec<ItemProducao>
 
@@ -68,9 +68,9 @@ struct Insumo{
     #[serde(rename="codProprio")]
     codproprio: String,
     unidade: String,
-    quant: f64,
+    quant: String,
     #[serde(rename="pPerda")]
-    pperda:f64
+    pperda:String
 }
 
 #[derive(Deserialize)]
@@ -120,6 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .header("Content-Type", "application/json")
         .send()
         .await?;
+
     let produtos_response: ProductResponse = res.json().await?;
     println!("{}", produtos_response.codigo.to_string());
 
@@ -144,11 +145,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     
     let rel_comp_status = res_rel_comp.status();
-    let rel_comp_text = res_rel_comp.text().await?;
-    //let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
+    //let rel_comp_text = res_rel_comp.text().await?;
+    let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
     
     println!("{}", rel_comp_status);
-    println!("{}", rel_comp_text);
+    for composicao in rel_comp_response {
+        println!("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-");
+        println!("cod: {}", composicao.cod);
+        println!("produto: {}", composicao.produto);
+        for insumo in composicao.insumos {
+            println!("---insumo---");
+            println!("cod insumo: {}", insumo.codinsumo);
+            println!("insumo: {}", insumo.insumo);
+            println!("codproprio: {}", insumo.codproprio);
+            println!("unidade: {}", insumo.unidade);
+            println!("quant: {}", insumo.quant);
+            println!("p perda: {}", insumo.pperda);
+        }
+    }
+    //println!("{}", rel_comp_text);
 
     let values_rel_prod = json!({
         "tipoData": "dtInicio",
@@ -168,10 +183,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
     let rel_prod_status = res_rel_prod.status();
-    let rel_prod_body = res_rel_prod.text().await?;
+    let rel_prod_response: Vec<Producao> = res_rel_prod.json().await?;
+    //let rel_prod_body = res_rel_prod.text().await?;
 
     println!("{}", rel_prod_status);
-    println!("{}", rel_prod_body);
+    for producao in rel_prod_response{
+        println!("{}", producao.produto);
+        for insumo in producao.insumos{
+            println!("{}", insumo.tipo);
+            println!("{}", insumo.codproduto);
+            println!("{}", insumo.ixprod);
+            println!("{}", insumo.icprod);
+            println!("{}", insumo.iucom);
+            println!("{}", insumo.quant);
+            println!("{}", insumo.pperda);
+            println!("{}", insumo.qntperda);
+            println!("{}", insumo.custoinsumo);
+            println!("{}", insumo.custounit);
+            println!("{}", insumo.custoextra);
+            println!("{}", insumo.custo);
+        }
+        for produto in producao.produto{
+
+        }
+    }
+    
 
     Ok(())
 }
