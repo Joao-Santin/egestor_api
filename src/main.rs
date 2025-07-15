@@ -7,10 +7,11 @@ use serde::{Serialize, Deserialize};
 use serde_json::json;
 use dotenv;
 
+
 #[derive(Serialize, Debug)]
-struct TokenRequest<'a> {
-    grant_type: &'a str,
-    personal_token: &'a str,
+struct TokenRequest {
+    grant_type: String,
+    personal_token: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -21,6 +22,39 @@ struct TokenResponse{
     //expires_in: i16,
     //refresh_token: String
 }
+struct Token{
+    token_str: String,
+    token_req: TokenRequest,
+    token_res: TokenResponse,
+    access_token: String
+}
+impl Token{
+    async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
+        dotenv::dotenv().ok();
+        let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
+        let token_req: TokenRequest = TokenRequest{
+            grant_type: "personal".to_string(),
+            personal_token: token_str.clone()
+        };
+        let full_token_res = client
+        .post("https://api.egestor.com.br/api/oauth/access_token")
+        .json(&token_req)
+        .send()
+        .await?;
+
+        let token_res: TokenResponse = full_token_res.json().await?;
+
+        let access_token: String = token_res.access_token.clone();
+         
+        Ok(Token{
+            token_str,
+            token_req,
+            token_res,
+            access_token
+        })
+    }
+}
+
 #[derive(Deserialize, Debug)]
 struct ProductResponse{
     codigo: i64,
@@ -29,10 +63,12 @@ struct ProductResponse{
     estoque: i64,
     tipoProduto: String,
 }
+
+
 #[derive(Deserialize, Debug)]
 struct ItemProducao{
     tipo: String,
-    #[serde(rename="codProduto")]
+#[serde(rename="codProduto")]
     codproduto: String,
     #[serde(rename="IxProd")]
     ixprod: String,
@@ -79,47 +115,45 @@ struct Composicao{
     produto: String,
     insumos: Vec<Insumo>
 }
+// enum utilizado para especificar os gets
+enum Gettypes{
+    EstoqueEsp(String),// dia: string
+    Producao,
+    
+}
+
+fn sazonalidade() -> Result<(), ()>{
+    Ok(())
+}
+
+fn estoque() -> Result<(), ()>{
+    Ok(())
+}
+
+fn material_reservado() -> Result<(), ()>{
+    Ok(())
+}
+
 fn levantamento_mrp(producao: Vec<Producao>, produtos: Vec<ProductResponse>, composicoes: Vec<Composicao>) -> Result<(), ()>{
     Ok(())
 }
+struct AppLogic{
+    token: Token
+
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // aqui esta o token pessoal para poder retirar o token de acesso
-
-    dotenv::dotenv().ok();
-    let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
-
-    let req_body = TokenRequest {
-        grant_type: "personal",
-        personal_token: &token_str,
-    };
-
     let client = Client::new();
 
-    let res_token = client
-        .post("https://api.egestor.com.br/api/oauth/access_token")
-        .json(&req_body)
-        .send()
-        .await?;
-
-    //let status = res_token.status();
-    //let body = res.text().await?;
-
-    let response: TokenResponse = res_token.json().await?;
-
-    // Aqui alguns relacionados ao request de token
-    //println!("Status: {}", status);
-    //println!("Access Token: {}", response.access_token);
-    //println!("Token_type: {}", response.token_type);
-    //println!("expires_in: {}", response.expires_in);
-    //println!("refresh_token: {}", response.refresh_token);
-    //println!("-----------");
+    let token: Token = Token::new(client.clone()).await?;
 
     let res = client
         .get("https://api.egestor.com.br/api/v1/produtos/16")
-        .bearer_auth(&response.access_token)
+        .bearer_auth(&token.access_token)
         .header("Content-Type", "application/json")
         .send()
         .await?;
@@ -141,7 +175,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let res_rel_comp = client
         .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
-        .bearer_auth(&response.access_token)
+        .bearer_auth(&token.access_token)
         .header("Content-Type", "application/json")
         .json(&values_rel_comp)
         .send()
@@ -180,7 +214,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     let res_rel_prod = client
         .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
-        .bearer_auth(response.access_token)
+        .bearer_auth(token.access_token)
         .header("Content-Type", "application/json")
         .json(&values_rel_prod)
         .send()

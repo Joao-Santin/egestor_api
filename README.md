@@ -43,4 +43,14 @@ LIXO:
 
 14/07/2025
     duvida: input para levantamento mrp(producao x venda).
+        resposta: venda
 
+
+    [] levantamento mrp
+        
+        [] a - levantamento material reservado
+        [] b - levantamento estoque
+        [] c - levantamento pedido
+
+    "produção/compra" = c - (b - a)
+    for "produção/compra".itens verificar vendas ultimos 12 meses.
