@@ -79,6 +79,9 @@ struct Composicao{
     produto: String,
     insumos: Vec<Insumo>
 }
+fn levantamento_mrp(producao: Vec<Producao>, produtos: Vec<ProductResponse>, composicoes: Vec<Composicao>) -> Result<(), ()>{
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -150,7 +153,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     println!("{}", rel_comp_status);
     for composicao in rel_comp_response {
-        println!("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-");
+        println!("-*-*-*-*-*-*COMPOSICAO*-*-*-*-*-*-");
         println!("cod: {}", composicao.cod);
         println!("produto: {}", composicao.produto);
         for insumo in composicao.insumos {
@@ -168,7 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let values_rel_prod = json!({
         "tipoData": "dtInicio",
         "de": "2019-04-01",
-        "ate": "2025-07-03",
+        "ate": "2025-07-20",
         "tags": "",
         "situacao": 0,
         "cods": "",
@@ -188,23 +191,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("{}", rel_prod_status);
     for producao in rel_prod_response{
-        println!("{}", producao.produto);
-        for insumo in producao.insumos{
-            println!("{}", insumo.tipo);
-            println!("{}", insumo.codproduto);
-            println!("{}", insumo.ixprod);
-            println!("{}", insumo.icprod);
-            println!("{}", insumo.iucom);
-            println!("{}", insumo.quant);
-            println!("{}", insumo.pperda);
-            println!("{}", insumo.qntperda);
-            println!("{}", insumo.custoinsumo);
-            println!("{}", insumo.custounit);
-            println!("{}", insumo.custoextra);
-            println!("{}", insumo.custo);
-        }
+        let mut contador_insumo: i16 = 0;
+        println!("*-*-*-*-PRODUCAO*-*-*-*-*");
         for produto in producao.produto{
-
+            println!("{}", produto.tipo);
+            println!("{}", produto.codproduto);
+            println!("{}", produto.ixprod);
+            println!("{}", produto.icprod);
+            println!("{}", produto.iucom);
+            println!("{}", produto.quant);
+            println!("{}", produto.pperda);
+            println!("{}", produto.qntperda);
+            println!("{}", produto.custoinsumo);
+            println!("{}", produto.custounit);
+            println!("{}", produto.custoextra);
+            println!("{}", produto.custo);
+        }
+        for insumo in producao.insumos{
+            contador_insumo += 1;
+            println!("---insumo: {} ---", contador_insumo);
+            println!("tipo: {}", insumo.tipo);
+            println!("cod produto: {}", insumo.codproduto);
+            println!("ix prod: {}", insumo.ixprod);
+            println!("ic prod: {}", insumo.icprod);
+            println!("iu com: {}", insumo.iucom);
+            println!("quant: {}", insumo.quant);
+            println!("pperda: {}", insumo.pperda);
+            println!("qnt perda: {}", insumo.qntperda);
+            println!("custo insumo: {}", insumo.custoinsumo);
+            println!("custo unit: {}", insumo.custounit);
+            println!("custo extra: {}", insumo.custoextra);
+            println!("custo: {}", insumo.custo);
         }
     }
     
