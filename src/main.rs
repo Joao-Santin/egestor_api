@@ -115,33 +115,42 @@ struct Composicao{
     produto: String,
     insumos: Vec<Insumo>
 }
-// enum utilizado para especificar os gets
-enum Gettypes{
-    EstoqueEsp(String),// dia: string
-    Producao,
-    
+
+//fn sazonalidade() -> Result<(), ()>{
+//    Ok(())
+//}
+//
+//fn estoque() -> Result<(), ()>{
+//    Ok(())
+//}
+//
+//fn material_reservado() -> Result<(), ()>{
+//    Ok(())
+//}
+//
+//fn levantamento_mrp(producao: Vec<Producao>, produtos: Vec<ProductResponse>, composicoes: Vec<Composicao>) -> Result<(), ()>{
+//    Ok(())
+//}
+
+struct Relatorios{
+    producoes: Vec<Producao>,
+    composicoes: Vec<Composicao>
+}
+impl Relatorios{
+    async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
+
+        Ok(Relatorios{
+            producoes,
+            composicoes
+        })
+
+    }
 }
 
-fn sazonalidade() -> Result<(), ()>{
-    Ok(())
-}
-
-fn estoque() -> Result<(), ()>{
-    Ok(())
-}
-
-fn material_reservado() -> Result<(), ()>{
-    Ok(())
-}
-
-fn levantamento_mrp(producao: Vec<Producao>, produtos: Vec<ProductResponse>, composicoes: Vec<Composicao>) -> Result<(), ()>{
-    Ok(())
-}
 struct AppLogic{
-    token: Token
-
+    token: Token,
+    relatorios: Relatorios
 }
-
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
