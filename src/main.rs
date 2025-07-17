@@ -131,13 +131,16 @@ struct Composicao{
 //    Ok(())
 //}
 
+struct Reqrequirements{
+    producoes: String,
+}
 struct Relatorios{
     producoes: Vec<Producao>,
     composicoes: Vec<Composicao>
 }
+
 impl Relatorios{
     async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
-
         Ok(Relatorios{
             producoes,
             composicoes
@@ -148,6 +151,7 @@ impl Relatorios{
 
 struct AppLogic{
     token: Token,
+    reqs: Reqrequirements,
     relatorios: Relatorios
 }
 
@@ -174,7 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //println!("Status2: {}", status);
     //println!("Resposta: {}", body);
     
-    //relatorio de composicoes retornada
+    //request para composicoes
     let values_rel_comp = json!({
         "codProds": "",
         "categoria": "",
