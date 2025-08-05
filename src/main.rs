@@ -21,13 +21,13 @@ struct TokenResponse{
     //expires_in: i16,
     //refresh_token: String
 }
-struct Token{
+struct ERPToken{
     token_str: String,
     token_req: TokenRequest,
     token_res: TokenResponse,
     access_token: String
 }
-impl Token{
+impl ERPToken{
     async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
         dotenv::dotenv().ok();
         let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
@@ -45,7 +45,7 @@ impl Token{
 
         let access_token: String = token_res.access_token.clone();
          
-        Ok(Token{
+        Ok(ERPToken{
             token_str,
             token_req,
             token_res,
@@ -116,7 +116,7 @@ struct Composicao{
 }
 
 //fn sazonalidade() -> Result<(), ()>{
-//    Ok(())
+//   Ok(())
 //}
 //
 //fn estoque() -> Result<(), ()>{
@@ -134,25 +134,25 @@ struct Composicao{
 struct Reqrequirements{
     producoes: String,
 }
-struct Relatorios{
-    producoes: Vec<Producao>,
-    composicoes: Vec<Composicao>
-}
-
-impl Relatorios{
-    async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
-        Ok(Relatorios{
-            producoes,
-            composicoes
-        })
-
-    }
-}
+// struct Relatorios{
+//     producoes: Vec<Producao>,
+//     composicoes: Vec<Composicao>
+// }
+//
+// impl Relatorios{
+//     async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
+//         Ok(Relatorios{
+//             producoes,
+//             composicoes
+//         })
+//
+//     }
+// }
 
 struct AppLogic{
-    token: Token,
+    token: ERPToken,
     reqs: Reqrequirements,
-    relatorios: Relatorios
+    // relatorios: Relatorios
 }
 
 #[tokio::main]
@@ -161,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // aqui esta o token pessoal para poder retirar o token de acesso
     let client = Client::new();
 
-    let token: Token = Token::new(client.clone()).await?;
+    let token: ERPToken = ERPToken::new(client.clone()).await?;
 
     let res = client
         .get("https://api.egestor.com.br/api/v1/produtos/16")
