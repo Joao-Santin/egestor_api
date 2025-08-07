@@ -132,27 +132,32 @@ struct Composicao{
 //}
 
 struct Reqrequirements{
-    producoes: String,
+    producoes: serde_json::Value,
+    composicoes: serde_json::Value,
 }
-// struct Relatorios{
-//     producoes: Vec<Producao>,
-//     composicoes: Vec<Composicao>
-// }
-//
-// impl Relatorios{
-//     async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
-//         Ok(Relatorios{
-//             producoes,
-//             composicoes
-//         })
-//
-//     }
-// }
+
+struct Relatorios{
+    producoes: Vec<Producao>,
+    composicoes: Vec<Composicao>
+}
+
+impl Relatorios{
+    async fn new(client: Client, reqrequi: Reqrequirements) -> Result<Self, Box<dyn std::error::Error>>{
+        let producoes
+        let composicoes
+
+        Ok(Relatorios{
+            producoes,
+            composicoes
+        })
+
+    }
+}
 
 struct AppLogic{
     token: ERPToken,
     reqs: Reqrequirements,
-    // relatorios: Relatorios
+    relatorios: Relatorios
 }
 
 #[tokio::main]
