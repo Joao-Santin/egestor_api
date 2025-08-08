@@ -135,6 +135,34 @@ struct Reqrequirements{
     producoes: serde_json::Value,
     composicoes: serde_json::Value,
 }
+impl Reqrequirements{
+    fn standard()->Self{
+        Self{
+            producoes: json!({
+            "tipoData": "dtInicio",
+            "de": "2019-04-01",
+            "ate": "2025-07-20",
+            "tags": "",
+            "situacao": 0,
+            "cods": "",
+            "esconderValores": false,
+            "mostrarQndPerda": true
+        }),
+            composicoes: json!({
+            "codProds": "",
+            "categoria": "",
+            "tags": ""
+        })
+        }
+
+    }
+}
+
+enum RelatoriosEnum{
+    All,
+    Producoes,
+    Composicoes,
+}
 
 struct Relatorios{
     producoes: Vec<Producao>,
@@ -142,15 +170,108 @@ struct Relatorios{
 }
 
 impl Relatorios{
-    async fn new(client: Client, reqrequi: Reqrequirements) -> Result<Self, Box<dyn std::error::Error>>{
-        let producoes
-        let composicoes
+    async fn get_all(client: Client, token: ERPToken, reqrequi: Reqrequirements) -> Result<Self, Box<dyn std::error::Error>>{
+        
+        let res_rel_prod = client
+            .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
+            .bearer_auth(&token.access_token)
+            .header("Content-Type", "application/json")
+            .json(&reqrequi.producoes)
+            .send()
+            .await?;
+
+        let rel_prod_status = res_rel_prod.status();
+        let producoes: Vec<Producao> =  res_rel_prod.json().await?;
+        let res_rel_comp = client
+            .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
+            .bearer_auth(token.access_token)
+            .header("Content-Type", "application/json")
+            .json(&reqrequi.composicoes)
+            .send()
+            .await?;
+
+        let rel_comp_status = res_rel_comp.status();
+        let composicoes: Vec<Composicao> = res_rel_comp.json().await?;
 
         Ok(Relatorios{
             producoes,
             composicoes
         })
 
+    }
+    async fn dbg_print(&self, relatorio: RelatoriosEnum) -> (){ // vai somente dar um print
+        match relatorio{
+            RelatoriosEnum::All => {
+                self.print_producoes();
+                self.print_composicoes();
+            },
+            RelatoriosEnum::Producoes => self.print_producoes(),
+            RelatoriosEnum::Composicoes => self.print_composicoes(),
+        }
+
+    }
+
+    fn print_producoes(&self) -> () {
+        if self.producoes.len() != 0{
+            for producao in &self.producoes{
+                let mut contador_insumo: i16 = 0;
+                println!("*-*-*-*-PRODUCAO*-*-*-*-*");
+                for produto in &producao.produto{
+                    println!("{}", produto.tipo);
+                    println!("{}", produto.codproduto);
+                    println!("{}", produto.ixprod);
+                    println!("{}", produto.icprod);
+                    println!("{}", produto.iucom);
+                    println!("{}", produto.quant);
+                    println!("{}", produto.pperda);
+                    println!("{}", produto.qntperda);
+                    println!("{}", produto.custoinsumo);
+                    println!("{}", produto.custounit);
+                    println!("{}", produto.custoextra);
+                    println!("{}", produto.custo);
+                }
+                for insumo in &producao.insumos{
+                    contador_insumo += 1;
+                    println!("---insumo: {} ---", contador_insumo);
+                    println!("tipo: {}", insumo.tipo);
+                    println!("cod produto: {}", insumo.codproduto);
+                    println!("ix prod: {}", insumo.ixprod);
+                    println!("ic prod: {}", insumo.icprod);
+                    println!("iu com: {}", insumo.iucom);
+                    println!("quant: {}", insumo.quant);
+                    println!("pperda: {}", insumo.pperda);
+                    println!("qnt perda: {}", insumo.qntperda);
+                    println!("custo insumo: {}", insumo.custoinsumo);
+                    println!("custo unit: {}", insumo.custounit);
+                    println!("custo extra: {}", insumo.custoextra);
+                    println!("custo: {}", insumo.custo);
+                }
+            }
+        }else{
+            println!("Producoes vazio :(")
+        }
+    }
+
+    fn print_composicoes(&self) -> () {
+        if self.composicoes.len() != 0{
+            for composicao in &self.composicoes {
+            println!("-*-*-*-*-*-*COMPOSICAO*-*-*-*-*-*-");
+            println!("cod: {}", composicao.cod);
+            println!("produto: {}", composicao.produto);
+            for insumo in &composicao.insumos {
+                println!("---insumo---");
+                println!("cod insumo: {}", insumo.codinsumo);
+                println!("insumo: {}", insumo.insumo);
+                println!("codproprio: {}", insumo.codproprio);
+                println!("unidade: {}", insumo.unidade);
+                println!("quant: {}", insumo.quant);
+                println!("p perda: {}", insumo.pperda);
+            }
+            }
+        }else{
+            println!("Composicoes vazio :(")
+        }
+        
     }
 }
 
@@ -162,120 +283,11 @@ struct AppLogic{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-    // aqui esta o token pessoal para poder retirar o token de acesso
     let client = Client::new();
-
-    let token: ERPToken = ERPToken::new(client.clone()).await?;
-
-    let res = client
-        .get("https://api.egestor.com.br/api/v1/produtos/16")
-        .bearer_auth(&token.access_token)
-        .header("Content-Type", "application/json")
-        .send()
-        .await?;
-
-    let produtos_response: ProductResponse = res.json().await?;
-    println!("{}", produtos_response.codigo.to_string());
-
-    //let status = res.status();
-    //let body = res.text().await?;
-    //println!("Status2: {}", status);
-    //println!("Resposta: {}", body);
-    
-    //request para composicoes
-    let values_rel_comp = json!({
-        "codProds": "",
-        "categoria": "",
-        "tags": ""
-    });
-
-    let res_rel_comp = client
-        .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
-        .bearer_auth(&token.access_token)
-        .header("Content-Type", "application/json")
-        .json(&values_rel_comp)
-        .send()
-        .await?;
-    
-    let rel_comp_status = res_rel_comp.status();
-    //let rel_comp_text = res_rel_comp.text().await?;
-    let rel_comp_response: Vec<Composicao> = res_rel_comp.json().await?;
-    
-    println!("{}", rel_comp_status);
-    for composicao in rel_comp_response {
-        println!("-*-*-*-*-*-*COMPOSICAO*-*-*-*-*-*-");
-        println!("cod: {}", composicao.cod);
-        println!("produto: {}", composicao.produto);
-        for insumo in composicao.insumos {
-            println!("---insumo---");
-            println!("cod insumo: {}", insumo.codinsumo);
-            println!("insumo: {}", insumo.insumo);
-            println!("codproprio: {}", insumo.codproprio);
-            println!("unidade: {}", insumo.unidade);
-            println!("quant: {}", insumo.quant);
-            println!("p perda: {}", insumo.pperda);
-        }
-    }
-    //println!("{}", rel_comp_text);
-
-    let values_rel_prod = json!({
-        "tipoData": "dtInicio",
-        "de": "2019-04-01",
-        "ate": "2025-07-20",
-        "tags": "",
-        "situacao": 0,
-        "cods": "",
-        "esconderValores": false,
-        "mostrarQndPerda": true
-    });
-    let res_rel_prod = client
-        .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
-        .bearer_auth(token.access_token)
-        .header("Content-Type", "application/json")
-        .json(&values_rel_prod)
-        .send()
-        .await?;
-    let rel_prod_status = res_rel_prod.status();
-    let rel_prod_response: Vec<Producao> = res_rel_prod.json().await?;
-    //let rel_prod_body = res_rel_prod.text().await?;
-
-    println!("{}", rel_prod_status);
-    for producao in rel_prod_response{
-        let mut contador_insumo: i16 = 0;
-        println!("*-*-*-*-PRODUCAO*-*-*-*-*");
-        for produto in producao.produto{
-            println!("{}", produto.tipo);
-            println!("{}", produto.codproduto);
-            println!("{}", produto.ixprod);
-            println!("{}", produto.icprod);
-            println!("{}", produto.iucom);
-            println!("{}", produto.quant);
-            println!("{}", produto.pperda);
-            println!("{}", produto.qntperda);
-            println!("{}", produto.custoinsumo);
-            println!("{}", produto.custounit);
-            println!("{}", produto.custoextra);
-            println!("{}", produto.custo);
-        }
-        for insumo in producao.insumos{
-            contador_insumo += 1;
-            println!("---insumo: {} ---", contador_insumo);
-            println!("tipo: {}", insumo.tipo);
-            println!("cod produto: {}", insumo.codproduto);
-            println!("ix prod: {}", insumo.ixprod);
-            println!("ic prod: {}", insumo.icprod);
-            println!("iu com: {}", insumo.iucom);
-            println!("quant: {}", insumo.quant);
-            println!("pperda: {}", insumo.pperda);
-            println!("qnt perda: {}", insumo.qntperda);
-            println!("custo insumo: {}", insumo.custoinsumo);
-            println!("custo unit: {}", insumo.custounit);
-            println!("custo extra: {}", insumo.custoextra);
-            println!("custo: {}", insumo.custo);
-        }
-    }
-    
-
+    let token: ERPToken = ERPToken::new(client.clone()).await?; //token acesso
+    let reqrequirements = Reqrequirements::standard();
+    let relatorios = Relatorios::get_all(client, token, reqrequirements).await?;
+    relatorios.print_composicoes();
+    relatorios.print_producoes();
     Ok(())
 }
