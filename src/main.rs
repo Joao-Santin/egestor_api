@@ -114,6 +114,14 @@ struct Composicao{
     produto: String,
     insumos: Vec<Insumo>
 }
+#[derive(Deserialize)]
+struct Estoque{
+    codigo: i32, //number
+    produto: String,
+    estoque: f32, //number
+    custo: String, //number, custo de fab
+    total: f32 //number, total de custo de fabricacao
+}
 
 //fn sazonalidade() -> Result<(), ()>{
 //   Ok(())
@@ -134,6 +142,7 @@ struct Composicao{
 struct Reqrequirements{
     producoes: serde_json::Value,
     composicoes: serde_json::Value,
+    estoques: serde_json::Value,
 }
 impl Reqrequirements{
     fn standard()->Self{
@@ -152,7 +161,17 @@ impl Reqrequirements{
             "codProds": "",
             "categoria": "",
             "tags": ""
-        })
+        }),
+            estoques: json!({
+            "dia": "2025-08-11",
+            "categoria": "",
+            "tags": "",
+            "sexEcluidos": false,
+            "semEstNaoControl": false,
+            "mostrarEstoqueNegativo": false,
+            "mostrarCodProprio": false,
+            "apresentarArquivador": false
+            })
         }
 
     }
@@ -162,11 +181,13 @@ enum RelatoriosEnum{
     All,
     Producoes,
     Composicoes,
+    Estoques
 }
 
 struct Relatorios{
     producoes: Vec<Producao>,
-    composicoes: Vec<Composicao>
+    composicoes: Vec<Composicao>,
+    estoques: Vec<Estoque>
 }
 
 impl Relatorios{
@@ -181,10 +202,11 @@ impl Relatorios{
             .await?;
 
         let rel_prod_status = res_rel_prod.status();
+        println!("Relatorio Prod: {}", rel_prod_status);
         let producoes: Vec<Producao> =  res_rel_prod.json().await?;
         let res_rel_comp = client
             .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
-            .bearer_auth(token.access_token)
+            .bearer_auth(&token.access_token)
             .header("Content-Type", "application/json")
             .json(&reqrequi.composicoes)
             .send()
@@ -192,10 +214,20 @@ impl Relatorios{
 
         let rel_comp_status = res_rel_comp.status();
         let composicoes: Vec<Composicao> = res_rel_comp.json().await?;
+        let res_rel_est = client
+            .post("https://api.egestor.com.br/api/v1/relatorios/estoqueDoDia")
+            .bearer_auth(token.access_token)
+            .header("Content-Type", "application/json")
+            .json(&reqrequi.estoques)
+            .send()
+            .await?;
+        let rel_est_status = res_rel_est.status();
+        let estoques: Vec<Estoque> = res_rel_est.json().await?;
 
         Ok(Relatorios{
             producoes,
-            composicoes
+            composicoes,
+            estoques
         })
 
     }
@@ -204,9 +236,26 @@ impl Relatorios{
             RelatoriosEnum::All => {
                 self.print_producoes();
                 self.print_composicoes();
+                self.print_estoques();
             },
             RelatoriosEnum::Producoes => self.print_producoes(),
             RelatoriosEnum::Composicoes => self.print_composicoes(),
+            RelatoriosEnum::Estoques => self.print_estoques(),
+        }
+
+    }
+    fn print_estoques(&self) -> (){
+        if self.estoques.is_empty(){
+            println!("Estoques vazio :(")
+        }else{
+            for estoque in &self.estoques{
+                println!("--estoque--");
+                println!("{}", estoque.codigo);
+                println!("{}", estoque.produto);
+                println!("{}", estoque.estoque);
+                println!("{}", estoque.custo);
+                println!("{}", estoque.total);
+            }
         }
 
     }
@@ -289,5 +338,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let relatorios = Relatorios::get_all(client, token, reqrequirements).await?;
     relatorios.print_composicoes();
     relatorios.print_producoes();
+    relatorios.print_estoques();
     Ok(())
 }
