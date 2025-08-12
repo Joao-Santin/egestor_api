@@ -173,8 +173,38 @@ impl Reqrequirements{
             "apresentarArquivador": false
             })
         }
-
     }
+    fn filter_composicoes(mut self, codprods: &str, categoria: &str, tags: &str)-> Self{
+        self.composicoes = json!({
+            "codProds": codprods,
+            "categoria": categoria,
+            "tags": tags
+        });
+        self
+    }
+    fn filter_producoes(mut self, tipodata: TipoDataProducao, de: &str, ate: &str, tags: &str, situacao: SituacaoProducao, cods: &str, escondervalores:bool, mostrarandperda: bool)-> Self{
+        self.producoes = json!({
+            "tipoData": ",
+            "de": "2019-04-01",
+            "ate": "2025-07-20",
+            "tags": "",
+            "situacao": 0,
+            "cods": "",
+            "esconderValores": false,
+            "mostrarQndPerda": true
+        })
+    }
+}
+
+// Enum usado para requisicoes nos filtros de producao
+enum Tipodataproducao{
+    DTInicio,
+    DTConclusao
+}
+enum SituacaoProducao {
+    Todas,
+    EmAberto,
+    Concluidas
 }
 
 enum RelatoriosEnum{
@@ -213,6 +243,7 @@ impl Relatorios{
             .await?;
 
         let rel_comp_status = res_rel_comp.status();
+        println!("Relatorio Comp: {}", rel_comp_status);
         let composicoes: Vec<Composicao> = res_rel_comp.json().await?;
         let res_rel_est = client
             .post("https://api.egestor.com.br/api/v1/relatorios/estoqueDoDia")
@@ -221,7 +252,9 @@ impl Relatorios{
             .json(&reqrequi.estoques)
             .send()
             .await?;
+
         let rel_est_status = res_rel_est.status();
+        println!("Relatorio Comp: {}", rel_est_status);
         let estoques: Vec<Estoque> = res_rel_est.json().await?;
 
         Ok(Relatorios{
