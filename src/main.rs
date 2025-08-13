@@ -27,6 +27,7 @@ struct ERPToken{
     token_res: TokenResponse,
     access_token: String
 }
+
 impl ERPToken{
     async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
         dotenv::dotenv().ok();
@@ -166,11 +167,11 @@ impl Reqrequirements{
             "dia": "2025-08-11",
             "categoria": "",
             "tags": "",
-            "sexEcluidos": false,
+            "semExcluidos": false,
             "semEstNaoControl": false,
             "mostrarEstoqueNegativo": false,
             "mostrarCodProprio": false,
-            "apresentarArquivador": false
+            "apresentarArquivados": false
             })
         }
     }
@@ -182,17 +183,31 @@ impl Reqrequirements{
         });
         self
     }
-    fn filter_producoes(mut self, tipodata: TipoDataProducao, de: &str, ate: &str, tags: &str, situacao: SituacaoProducao, cods: &str, escondervalores:bool, mostrarandperda: bool)-> Self{
+    fn filter_producoes(mut self, tipodata: Tipodataproducao, de: &str, ate: &str, tags: &str, situacao: SituacaoProducao, cods: &str, escondervalores:bool, mostrarandperda: bool)-> Self{
         self.producoes = json!({
-            "tipoData": ",
-            "de": "2019-04-01",
-            "ate": "2025-07-20",
-            "tags": "",
-            "situacao": 0,
-            "cods": "",
-            "esconderValores": false,
-            "mostrarQndPerda": true
-        })
+            "tipoData": tipodata.codigo(),
+            "de": de,
+            "ate": ate,
+            "tags": tags,
+            "situacao": situacao.codigo(),
+            "cods": cods,
+            "esconderValores": escondervalores,
+            "mostrarQndPerda": mostrarandperda
+        });
+        self
+    }
+    fn filter_estoques(mut self, dia: &str, categoria: u32, tags: &str, semexcluidos: bool, semestnaocontrol: bool, mostrarestoquenegativo: bool, mostrarcodproprio: bool, apresentararquivados: bool) -> Self{
+        self.estoques = json!({
+            "dia": dia,
+            "categoria": categoria,
+            "tags": tags,
+            "semExcluidos": semexcluidos,
+            "semEstNaoControl": semestnaocontrol,
+            "mostrarEstoqueNegativo": mostrarestoquenegativo,
+            "mostrarCodProprio": mostrarcodproprio,
+            "apresentarArquivados": apresentararquivados
+            });
+        self
     }
 }
 
@@ -201,10 +216,27 @@ enum Tipodataproducao{
     DTInicio,
     DTConclusao
 }
+impl Tipodataproducao{
+    fn codigo(&self) -> &str{
+    match self {
+        Tipodataproducao::DTInicio => "dtInicio",
+        Tipodataproducao::DTConclusao => "dtConclusao"
+    }
+}
+}
 enum SituacaoProducao {
     Todas,
     EmAberto,
     Concluidas
+}
+impl SituacaoProducao{
+    fn codigo(&self) -> i32{
+        match self{
+            SituacaoProducao::Todas => 0,
+            SituacaoProducao::EmAberto => 10,
+            SituacaoProducao::Concluidas => 50 
+        }
+    }
 }
 
 enum RelatoriosEnum{
