@@ -388,12 +388,26 @@ impl Relatorios{
         
     }
 }
+struct AjusteEstoque{
+
+}
 
 struct AppLogic{
     token: ERPToken,
     reqs: Reqrequirements,
-    relatorios: Relatorios
+    relatorios: Relatorios,
+    ajuste_estoque: AjusteEstoque
 }
+// impl AppLogic{
+//     fn start(client: Client) -> Self{
+//         AppLogic {
+//             token: ERPToken::new(client),
+//             reqs: Reqrequirements::standard(),
+//             relatorios: Relatorios::get_all()
+//
+//         }   
+//     }
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
