@@ -1,4 +1,5 @@
 use std::env;
+use chrono::Utc;
 
 //
 use reqwest::Client;
@@ -7,13 +8,13 @@ use serde_json::json;
 use dotenv;
 
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 struct TokenRequest {
     grant_type: String,
     personal_token: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct TokenResponse{
     access_token: String,
     // não sendo usados, por isso comentei, quando for usar, descomentar
@@ -21,6 +22,7 @@ struct TokenResponse{
     //expires_in: i16,
     //refresh_token: String
 }
+#[derive(Clone)]
 struct ERPToken{
     token_str: String,
     token_req: TokenRequest,
@@ -140,18 +142,21 @@ struct Estoque{
 //    Ok(())
 //}
 
-struct Reqrequirements{
+#[derive(Clone)]
+struct Reqrequirementsrelatorios{
     producoes: serde_json::Value,
     composicoes: serde_json::Value,
     estoques: serde_json::Value,
 }
-impl Reqrequirements{
+impl Reqrequirementsrelatorios{
     fn standard()->Self{
+        let today = Utc::now().date_naive();
+        let today_string = today.to_string();
         Self{
             producoes: json!({
             "tipoData": "dtInicio",
             "de": "2019-04-01",
-            "ate": "2025-07-20",
+            "ate": &today_string,
             "tags": "",
             "situacao": 0,
             "cods": "",
@@ -164,7 +169,7 @@ impl Reqrequirements{
             "tags": ""
         }),
             estoques: json!({
-            "dia": "2025-08-11",
+            "dia": &today_string,
             "categoria": "",
             "tags": "",
             "semExcluidos": false,
@@ -196,7 +201,7 @@ impl Reqrequirements{
         });
         self
     }
-    fn filter_estoques(mut self, dia: &str, categoria: u32, tags: &str, semexcluidos: bool, semestnaocontrol: bool, mostrarestoquenegativo: bool, mostrarcodproprio: bool, apresentararquivados: bool) -> Self{
+    fn filter_estoques(mut self, dia: &str, categoria: &str, tags: &str, semexcluidos: bool, semestnaocontrol: bool, mostrarestoquenegativo: bool, mostrarcodproprio: bool, apresentararquivados: bool) -> Self{
         self.estoques = json!({
             "dia": dia,
             "categoria": categoria,
@@ -253,13 +258,13 @@ struct Relatorios{
 }
 
 impl Relatorios{
-    async fn get_all(client: Client, token: ERPToken, reqrequi: Reqrequirements) -> Result<Self, Box<dyn std::error::Error>>{
+    async fn get_all(client: Client, token: ERPToken, reqrequi: Reqrequirementsrelatorios) -> Result<Self, Box<dyn std::error::Error>>{
         
         let res_rel_prod = client
             .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
             .bearer_auth(&token.access_token)
             .header("Content-Type", "application/json")
-            .json(&reqrequi.producoes)
+.json(&reqrequi.producoes)
             .send()
             .await?;
 
@@ -388,13 +393,105 @@ impl Relatorios{
         
     }
 }
-struct AjusteEstoque{
 
+enum TypoMovimentacao{
+    Retirada,
+    Entrada
+}
+
+struct ItemRetirada{
+    codigo: u32,
+    produto: String,
+    tipo: TypoMovimentacao,
+    quantidade: u32,
+    estoqueatual: u32,
+}
+
+#[derive(Serialize, Debug)]
+struct ItemResumo{
+    #[serde(rename="codProduto")]
+    codproduto: u32,
+    #[serde(rename="estoqueFinal")]
+    estoquefinal: u32
+}
+
+struct AjusteEstoque{
+    estoque: Vec<Estoque>,
+    carrinhoretirada: Vec<ItemRetirada>,
+    resumoretirada: Vec<ItemResumo>,
+    obs: String
+    // historico: À FAZER AINDA
+}
+
+impl AjusteEstoque{
+    fn new() -> Self{
+        Self{
+            estoque: Vec::new(),
+            carrinhoretirada: Vec::new(),
+            resumoretirada: Vec::new(),
+            obs: String::new()
+        }
+    }
+
+    fn get_estoque(&mut self, estoque: Vec<Estoque>)-> &mut Self{
+        self.estoque = estoque;
+        self
+    }
+    fn add_item_carrinho(&mut self, item: ItemRetirada) -> &mut Self{
+        if let Some(itemlista) = self.carrinhoretirada.iter_mut().find(|i| i.codigo == item.codigo){
+            itemlista.quantidade += item.quantidade;
+        }else{
+        self.carrinhoretirada.push(item);
+        }
+        self
+    }
+    fn del_item_carrinho(&mut self, codigo: u32){
+        self.carrinhoretirada.retain(|item| item.codigo != codigo)
+    }
+    fn resumir(&mut self)-> &mut Self{
+        if self.carrinhoretirada.is_empty(){
+            println!("Adicione itens no carrinho, meu querido!")
+        }else{
+            for item in &self.carrinhoretirada{
+                self.resumoretirada.push(ItemResumo{
+                    codproduto: item.codigo,
+                    estoquefinal: (item.estoqueatual+item.quantidade)
+                })
+            }
+        };
+        self
+    }
+    async fn realizar_operacao(mut self, client: Client, token: ERPToken){
+        let req: serde_json::Value = json!({
+            "codContato": 40,
+            "motivo": 10,
+            "obs": self.obs,
+            "tags": ["Sistema Almoxarifado"],
+            "produtos": self.resumoretirada
+        });
+
+        let post = client
+            .post("https://api.egestor.com.br/api/v1/ajusteEstoque")
+            .bearer_auth(token.access_token)
+            .header("Content-Type", "application/json")
+            .json(&req)
+            .send()
+            .await;
+        match post{
+            Ok(resp) => {
+                println!("Status: {}", resp.status());
+                if let Ok(body) = resp.text().await {
+                    println!("Resposta: {}", body);
+                }
+            }
+            Err(e) => println!("Erro: {}", e)
+        }
+    }
 }
 
 struct AppLogic{
     token: ERPToken,
-    reqs: Reqrequirements,
+    reqs: Reqrequirementsrelatorios,
     relatorios: Relatorios,
     ajuste_estoque: AjusteEstoque
 }
@@ -413,10 +510,14 @@ struct AppLogic{
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
     let token: ERPToken = ERPToken::new(client.clone()).await?; //token acesso
-    let reqrequirements = Reqrequirements::standard();
-    let relatorios = Relatorios::get_all(client, token, reqrequirements).await?;
+    let reqrequirements = Reqrequirementsrelatorios::standard().filter_estoques("2025-08-19", "", "Almoxarifado", false, false, true, false, false);
+    let relatorios = Relatorios::get_all(client.clone(), token.clone(), reqrequirements.clone()).await?;
     relatorios.print_composicoes();
     relatorios.print_producoes();
     relatorios.print_estoques();
+    let mut ajuste_estoque = AjusteEstoque::new();
+    ajuste_estoque.get_estoque(relatorios.estoques).add_item_carrinho(ItemRetirada { codigo: 542, produto: "MERTIOLATE".to_string(), tipo: TypoMovimentacao::Entrada, quantidade: 26, estoqueatual: 0 }).resumir();
+    ajuste_estoque.realizar_operacao(client, token).await;
+
     Ok(())
 }
