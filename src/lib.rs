@@ -119,7 +119,7 @@ struct Composicao{
 }
 #[derive(Deserialize)]
 struct Estoque{
-    codigo: i32, //number
+    codigo: u32, //number
     produto: String,
     estoque: f32, //number
     custo: String, //number, custo de fab
@@ -403,8 +403,8 @@ struct ItemRetirada{
     codigo: u32,
     produto: String,
     tipo: TypoMovimentacao,
-    quantidade: u32,
-    estoqueatual: u32,
+    quantidade: i32,
+    estoqueatual: i32,
 }
 
 #[derive(Serialize, Debug)]
@@ -412,7 +412,7 @@ struct ItemResumo{
     #[serde(rename="codProduto")]
     codproduto: u32,
     #[serde(rename="estoqueFinal")]
-    estoquefinal: u32
+    estoquefinal: i32
 }
 
 struct AjusteEstoque{
@@ -437,22 +437,41 @@ impl AjusteEstoque{
         self.estoque = estoque;
         self
     }
-    fn add_item_carrinho(&mut self, item: ItemRetirada) -> &mut Self{
-        if let Some(itemlista) = self.carrinhoretirada.iter_mut().find(|i| i.codigo == item.codigo){
-            itemlista.quantidade += item.quantidade;
+
+    fn add_item_carrinho(&mut self, mut item: ItemRetirada) -> &mut Self{
+        if let Some(itemestoque) = self.estoque.iter_mut().find(|i| i.codigo == item.codigo){
+            let i_item_estoque = itemestoque.estoque as i32;
+            item.estoqueatual = i_item_estoque;
+
+            match item.tipo{
+                TypoMovimentacao::Entrada =>(),
+                TypoMovimentacao::Retirada=>{
+                    item.quantidade = -item.quantidade
+                },
+            };
+
+            if let Some(itemlista) = self.carrinhoretirada.iter_mut().find(|i| i.codigo == item.codigo){
+                itemlista.quantidade += item.quantidade;
+            }else{
+            self.carrinhoretirada.push(item);
+            }
         }else{
-        self.carrinhoretirada.push(item);
+            println!("Item nao encontrado em estoque")
         }
         self
     }
+
     fn del_item_carrinho(&mut self, codigo: u32){
         self.carrinhoretirada.retain(|item| item.codigo != codigo)
     }
+
     fn resumir(&mut self)-> &mut Self{
         if self.carrinhoretirada.is_empty(){
             println!("Adicione itens no carrinho, meu querido!")
         }else{
             for item in &self.carrinhoretirada{
+                println!("Estoque Atual: {}", item.estoqueatual);
+                println!("Quantidade add/retirada Atual: {}", item.quantidade);
                 self.resumoretirada.push(ItemResumo{
                     codproduto: item.codigo,
                     estoquefinal: (item.estoqueatual+item.quantidade)
@@ -461,7 +480,7 @@ impl AjusteEstoque{
         };
         self
     }
-    async fn realizar_operacao(mut self, client: Client, token: ERPToken){
+    async fn realizar_operacao(self, client: Client, token: ERPToken){
         let req: serde_json::Value = json!({
             "codContato": 40,
             "motivo": 10,
@@ -506,18 +525,22 @@ struct AppLogic{
 //     }
 // }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new();
-    let token: ERPToken = ERPToken::new(client.clone()).await?; //token acesso
-    let reqrequirements = Reqrequirementsrelatorios::standard().filter_estoques("2025-08-19", "", "Almoxarifado", false, false, true, false, false);
-    let relatorios = Relatorios::get_all(client.clone(), token.clone(), reqrequirements.clone()).await?;
-    relatorios.print_composicoes();
-    relatorios.print_producoes();
-    relatorios.print_estoques();
-    let mut ajuste_estoque = AjusteEstoque::new();
-    ajuste_estoque.get_estoque(relatorios.estoques).add_item_carrinho(ItemRetirada { codigo: 542, produto: "MERTIOLATE".to_string(), tipo: TypoMovimentacao::Entrada, quantidade: 26, estoqueatual: 0 }).resumir();
-    ajuste_estoque.realizar_operacao(client, token).await;
-
-    Ok(())
-}
+// #[tokio::main]
+// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//     let today = Utc::now().date_naive();
+//     let today_string = today.to_string();
+//     let client = Client::new();
+//     let token: ERPToken = ERPToken::new(client.clone()).await?; //token acesso
+//     let reqrequirements = Reqrequirementsrelatorios::standard().filter_estoques(&today_string, "", "Almoxarifado", false, false, true, false, false);
+//     let relatorios = Relatorios::get_all(client.clone(), token.clone(), reqrequirements.clone()).await?;
+//     relatorios.print_composicoes();
+//     relatorios.print_producoes();
+//     relatorios.print_estoques();
+//     let mut ajuste_estoque = AjusteEstoque::new();
+//     ajuste_estoque.get_estoque(relatorios.estoques)
+//         .add_item_carrinho(ItemRetirada { codigo: 669, produto: "".to_string(), tipo: TypoMovimentacao::Retirada, quantidade: 1, estoqueatual: 0 })
+//         .resumir();
+//     ajuste_estoque.realizar_operacao(client, token).await;
+//
+//     Ok(())
+// }
