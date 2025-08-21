@@ -23,7 +23,7 @@ struct TokenResponse{
     //refresh_token: String
 }
 #[derive(Clone)]
-struct ERPToken{
+pub struct ERPToken{
     token_str: String,
     token_req: TokenRequest,
     token_res: TokenResponse,
@@ -31,7 +31,9 @@ struct ERPToken{
 }
 
 impl ERPToken{
-    async fn new(client: Client) -> Result<Self, Box<dyn std::error::Error>>{
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>>{
+
+        let client = Client::new();
         dotenv::dotenv().ok();
         let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
         let token_req: TokenRequest = TokenRequest{
@@ -54,6 +56,10 @@ impl ERPToken{
             token_res,
             access_token
         })
+    }
+    pub async fn get_access_token() -> Result<String, String>{
+        let token = Self::new().await.map_err(|e| e.to_string())?;
+        Ok(token.access_token)
     }
 }
 
@@ -415,7 +421,7 @@ struct ItemResumo{
     estoquefinal: i32
 }
 
-struct AjusteEstoque{
+pub struct AjusteEstoque{
     estoque: Vec<Estoque>,
     carrinhoretirada: Vec<ItemRetirada>,
     resumoretirada: Vec<ItemResumo>,
@@ -424,7 +430,7 @@ struct AjusteEstoque{
 }
 
 impl AjusteEstoque{
-    fn new() -> Self{
+    pub fn new() -> Self{
         Self{
             estoque: Vec::new(),
             carrinhoretirada: Vec::new(),
@@ -433,12 +439,12 @@ impl AjusteEstoque{
         }
     }
 
-    fn get_estoque(&mut self, estoque: Vec<Estoque>)-> &mut Self{
+    pub fn get_estoque(&mut self, estoque: Vec<Estoque>)-> &mut Self{
         self.estoque = estoque;
         self
     }
 
-    fn add_item_carrinho(&mut self, mut item: ItemRetirada) -> &mut Self{
+    pub fn add_item_carrinho(&mut self, mut item: ItemRetirada) -> &mut Self{
         if let Some(itemestoque) = self.estoque.iter_mut().find(|i| i.codigo == item.codigo){
             let i_item_estoque = itemestoque.estoque as i32;
             item.estoqueatual = i_item_estoque;
@@ -461,11 +467,11 @@ impl AjusteEstoque{
         self
     }
 
-    fn del_item_carrinho(&mut self, codigo: u32){
+    pub fn del_item_carrinho(&mut self, codigo: u32){
         self.carrinhoretirada.retain(|item| item.codigo != codigo)
     }
 
-    fn resumir(&mut self)-> &mut Self{
+    pub fn resumir(&mut self)-> &mut Self{
         if self.carrinhoretirada.is_empty(){
             println!("Adicione itens no carrinho, meu querido!")
         }else{
@@ -480,7 +486,7 @@ impl AjusteEstoque{
         };
         self
     }
-    async fn realizar_operacao(self, client: Client, token: ERPToken){
+    pub async fn realizar_operacao(self, client: Client, token: ERPToken){
         let req: serde_json::Value = json!({
             "codContato": 40,
             "motivo": 10,
@@ -529,7 +535,7 @@ struct AppLogic{
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //     let today = Utc::now().date_naive();
 //     let today_string = today.to_string();
-//     let client = Client::new();
+    // let client = Client::new();
 //     let token: ERPToken = ERPToken::new(client.clone()).await?; //token acesso
 //     let reqrequirements = Reqrequirementsrelatorios::standard().filter_estoques(&today_string, "", "Almoxarifado", false, false, true, false, false);
 //     let relatorios = Relatorios::get_all(client.clone(), token.clone(), reqrequirements.clone()).await?;
