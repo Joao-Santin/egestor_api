@@ -124,12 +124,12 @@ struct Composicao{
     insumos: Vec<Insumo>
 }
 #[derive(Deserialize)]
-struct Estoque{
-    codigo: u32, //number
-    produto: String,
-    estoque: f32, //number
-    custo: String, //number, custo de fab
-    total: f32 //number, total de custo de fabricacao
+pub struct Estoque{
+    pub codigo: u32, //number
+    pub produto: String,
+    pub estoque: f32, //number
+    pub custo: String, //number, custo de fab
+    pub total: f32 //number, total de custo de fabricacao
 }
 
 //fn sazonalidade() -> Result<(), ()>{
@@ -400,17 +400,17 @@ impl Relatorios{
     }
 }
 
-enum TypoMovimentacao{
+pub enum TypoMovimentacao{
     Retirada,
     Entrada
 }
 
-struct ItemRetirada{
-    codigo: u32,
-    produto: String,
-    tipo: TypoMovimentacao,
-    quantidade: i32,
-    estoqueatual: i32,
+pub struct ItemRetirada{
+    pub codigo: u32,
+    pub produto: String,
+    pub tipo: TypoMovimentacao,
+    pub quantidade: i32,
+    pub estoqueatual: i32,
 }
 
 #[derive(Serialize, Debug)]
@@ -422,10 +422,10 @@ struct ItemResumo{
 }
 
 pub struct AjusteEstoque{
-    estoque: Vec<Estoque>,
-    carrinhoretirada: Vec<ItemRetirada>,
-    resumoretirada: Vec<ItemResumo>,
-    obs: String
+    pub estoque: Vec<Estoque>,
+    pub carrinhoretirada: Vec<ItemRetirada>,
+    pub resumoretirada: Vec<ItemResumo>,
+    pub obs: String
     // historico: À FAZER AINDA
 }
 
