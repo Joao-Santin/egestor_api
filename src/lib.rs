@@ -22,20 +22,20 @@ struct TokenResponse{
     //expires_in: i16,
     //refresh_token: String
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ERPToken{
     token_str: String,
     token_req: TokenRequest,
     token_res: TokenResponse,
-    access_token: String
+    pub access_token: String
 }
 
 impl ERPToken{
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>>{
+    pub async fn new(client: &Client) -> Result<Self, Box<dyn std::error::Error>>{
 
         let client = Client::new();
         dotenv::dotenv().ok();
-        let token_str: String = env::var("TOKENEGESTOR").expect("Variable not found.");
+        let token_str: String = env::var("TOKENEGESTOR").expect("Variavel TOKENEGESTOR nao encontrada");
         let token_req: TokenRequest = TokenRequest{
             grant_type: "personal".to_string(),
             personal_token: token_str.clone()
@@ -58,7 +58,8 @@ impl ERPToken{
         })
     }
     pub async fn get_access_token() -> Result<String, String>{
-        let token = Self::new().await.map_err(|e| e.to_string())?;
+        let client = Client::new();
+        let token = Self::new(&client).await.map_err(|e| e.to_string())?;
         Ok(token.access_token)
     }
 }
@@ -73,7 +74,7 @@ struct ProductResponse{
 }
 
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct ItemProducao{
     tipo: String,
 #[serde(rename="codProduto")]
@@ -97,14 +98,14 @@ struct ItemProducao{
     custoextra: f64,
     custo: f64,
 }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct Producao{
     cod: String,
     insumos: Vec<ItemProducao>,
     produto: Vec<ItemProducao>
 
 }
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 struct Insumo{
     #[serde(rename="codInsumo")]
     codinsumo: String,
@@ -117,13 +118,13 @@ struct Insumo{
     pperda:String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 struct Composicao{
     cod: String,
     produto: String,
     insumos: Vec<Insumo>
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Estoque{
     pub codigo: u32, //number
     pub produto: String,
@@ -148,7 +149,7 @@ pub struct Estoque{
 //    Ok(())
 //}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Reqrequirementsrelatorios{
     producoes: serde_json::Value,
     composicoes: serde_json::Value,
@@ -257,6 +258,7 @@ enum RelatoriosEnum{
     Estoques
 }
 
+#[derive(Debug, Clone)]
 struct Relatorios{
     producoes: Vec<Producao>,
     composicoes: Vec<Composicao>,
@@ -264,7 +266,7 @@ struct Relatorios{
 }
 
 impl Relatorios{
-    async fn get_all(client: Client, token: ERPToken, reqrequi: Reqrequirementsrelatorios) -> Result<Self, Box<dyn std::error::Error>>{
+    async fn get_all(client: &Client, token: &ERPToken, reqrequi: &Reqrequirementsrelatorios) -> Result<Self, Box<dyn std::error::Error>>{
         
         let res_rel_prod = client
             .post("https://api.egestor.com.br/api/v1/relatorios/producoesDetalhadas")
@@ -290,7 +292,7 @@ impl Relatorios{
         let composicoes: Vec<Composicao> = res_rel_comp.json().await?;
         let res_rel_est = client
             .post("https://api.egestor.com.br/api/v1/relatorios/estoqueDoDia")
-            .bearer_auth(token.access_token)
+            .bearer_auth(&token.access_token)
             .header("Content-Type", "application/json")
             .json(&reqrequi.estoques)
             .send()
@@ -400,11 +402,13 @@ impl Relatorios{
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum TypoMovimentacao{
     Retirada,
     Entrada
 }
 
+#[derive(Debug, Clone)]
 pub struct ItemRetirada{
     pub codigo: u32,
     pub produto: String,
@@ -413,7 +417,7 @@ pub struct ItemRetirada{
     pub estoqueatual: i32,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 struct ItemResumo{
     #[serde(rename="codProduto")]
     codproduto: u32,
@@ -421,6 +425,7 @@ struct ItemResumo{
     estoquefinal: i32
 }
 
+#[derive(Debug, Clone)]
 pub struct AjusteEstoque{
     pub estoque: Vec<Estoque>,
     pub carrinhoretirada: Vec<ItemRetirada>,
@@ -514,11 +519,29 @@ impl AjusteEstoque{
     }
 }
 
-struct AppLogic{
-    token: ERPToken,
-    reqs: Reqrequirementsrelatorios,
-    relatorios: Relatorios,
-    ajuste_estoque: AjusteEstoque
+#[derive(Debug, Clone)]
+pub struct AppLogic{
+    pub token: ERPToken,
+    pub reqs: Reqrequirementsrelatorios,
+    pub relatorios: Relatorios,
+    pub ajuste_estoque: AjusteEstoque
+}
+
+impl AppLogic{
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>>{
+        let client = Client::new();
+        let token = ERPToken::new(&client).await?;
+        let reqs = Reqrequirementsrelatorios::standard();
+        let relatorios = Relatorios::get_all(&client, &token, &reqs).await?;
+        let ajuste_estoque = AjusteEstoque::new();
+
+        Ok(Self{
+            token,
+            reqs,
+            relatorios,
+            ajuste_estoque
+        })
+    }
 }
 // impl AppLogic{
 //     fn start(client: Client) -> Self{
