@@ -124,6 +124,7 @@ struct Composicao{
     produto: String,
     insumos: Vec<Insumo>
 }
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct Estoque{
     pub codigo: u32, //number
@@ -159,6 +160,7 @@ impl Reqrequirementsrelatorios{
     fn standard()->Self{
         let today = Utc::now().date_naive();
         let today_string = today.to_string();
+        println!("hoje(em standard reqrequirements): {}", &today_string);
         Self{
             producoes: json!({
             "tipoData": "dtInicio",
@@ -168,7 +170,7 @@ impl Reqrequirementsrelatorios{
             "situacao": 0,
             "cods": "",
             "esconderValores": false,
-            "mostrarQndPerda": true
+            "mostrarQntPerda": true
         }),
             composicoes: json!({
             "codProds": "",
@@ -259,10 +261,10 @@ enum RelatoriosEnum{
 }
 
 #[derive(Debug, Clone)]
-struct Relatorios{
-    producoes: Vec<Producao>,
-    composicoes: Vec<Composicao>,
-    estoques: Vec<Estoque>
+pub struct Relatorios{
+    pub producoes: Vec<Producao>,
+    pub composicoes: Vec<Composicao>,
+    pub estoques: Vec<Estoque>
 }
 
 impl Relatorios{
@@ -277,8 +279,11 @@ impl Relatorios{
             .await?;
 
         let rel_prod_status = res_rel_prod.status();
+        let rel_prod_text = res_rel_prod.text().await?;
+
         println!("Relatorio Prod: {}", rel_prod_status);
-        let producoes: Vec<Producao> =  res_rel_prod.json().await?;
+        println!("Relatorio Prod Text: {}", rel_prod_text);
+        let producoes: Vec<Producao> = serde_json::from_str(&rel_prod_text)?;
         let res_rel_comp = client
             .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
             .bearer_auth(&token.access_token)
