@@ -180,7 +180,7 @@ impl Reqrequirementsrelatorios{
             estoques: json!({
             "dia": &today_string,
             "categoria": "",
-            "tags": "",
+            "tags": "Almoxarifado",
             "semExcluidos": false,
             "semEstNaoControl": false,
             "mostrarEstoqueNegativo": false,
@@ -407,19 +407,19 @@ impl Relatorios{
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum TypoMovimentacao{
-    Retirada,
-    Entrada
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TipoMovimento{
+    Entrada,
+    Retirada
 }
 
 #[derive(Debug, Clone)]
 pub struct ItemRetirada{
     pub codigo: u32,
     pub produto: String,
-    pub tipo: TypoMovimentacao,
-    pub quantidade: i32,
-    pub estoqueatual: i32,
+    pub tipo: TipoMovimento,
+    pub quantidade: f32,
+    pub estoqueatual: f32,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -427,7 +427,7 @@ struct ItemResumo{
     #[serde(rename="codProduto")]
     codproduto: u32,
     #[serde(rename="estoqueFinal")]
-    estoquefinal: i32
+    estoquefinal: f32
 }
 
 #[derive(Debug, Clone)]
@@ -456,12 +456,12 @@ impl AjusteEstoque{
 
     pub fn add_item_carrinho(&mut self, mut item: ItemRetirada) -> &mut Self{
         if let Some(itemestoque) = self.estoque.iter_mut().find(|i| i.codigo == item.codigo){
-            let i_item_estoque = itemestoque.estoque as i32;
+            let i_item_estoque = itemestoque.estoque as f32;
             item.estoqueatual = i_item_estoque;
 
             match item.tipo{
-                TypoMovimentacao::Entrada =>(),
-                TypoMovimentacao::Retirada=>{
+                TipoMovimento::Entrada =>(),
+                TipoMovimento::Retirada=>{
                     item.quantidade = -item.quantidade
                 },
             };
