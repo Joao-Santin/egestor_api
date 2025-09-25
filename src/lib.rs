@@ -1,4 +1,5 @@
 use std::env;
+use std::fmt;
 use chrono::Utc;
 
 //
@@ -412,6 +413,16 @@ pub enum TipoMovimento{
     Entrada,
     Retirada
 }
+impl fmt::Display for TipoMovimento{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self{
+            TipoMovimento::Entrada => "Entrada",
+            TipoMovimento::Retirada => "Retirada"
+        };
+        write!(f, "{}", s)
+    }
+
+}
 
 #[derive(Debug, Clone)]
 pub struct ItemRetirada{
@@ -481,20 +492,29 @@ impl AjusteEstoque{
         self.carrinhoretirada.retain(|item| item.codigo != codigo)
     }
 
-    pub fn resumir(&mut self)-> &mut Self{
+    pub fn resumir(&mut self){
         if self.carrinhoretirada.is_empty(){
             println!("Adicione itens no carrinho, meu querido!")
         }else{
             for item in &self.carrinhoretirada{
-                println!("Estoque Atual: {}", item.estoqueatual);
-                println!("Quantidade add/retirada Atual: {}", item.quantidade);
+                let texto_item = &item.produto.to_lowercase();
+                let texto_item = &item.produto.trim();
+                if let Some(start) = &texto_item.find("(almoxarifado"){
+                    let inicio_codigo = start + "(almoxarifado".len();
+                    if let Some(fim_rel) = texto_item[inicio_codigo..].find(")"){
+                        let fim_codigo = inicio_codigo + fim_rel;
+                        let mut codigo = texto_item[inicio_codigo..fim_codigo].trim().to_string();
+                        codigo.retain(|c| c != ':');
+
+                        println!("{}", codigo.trim())
+                    };
+                }
                 self.resumoretirada.push(ItemResumo{
                     codproduto: item.codigo,
                     estoquefinal: (item.estoqueatual+item.quantidade)
                 })
             }
         };
-        self
     }
     pub async fn realizar_operacao(self, client: Client, token: ERPToken){
         let req: serde_json::Value = json!({
