@@ -156,12 +156,12 @@ struct Reqrequirementsrelatorios{
     producoes: serde_json::Value,
     composicoes: serde_json::Value,
     estoques: serde_json::Value,
+    estoques_geral: serde_json::Value,
 }
 impl Reqrequirementsrelatorios{
     fn standard()->Self{
         let today = Utc::now().date_naive();
         let today_string = today.to_string();
-        println!("hoje(em standard reqrequirements): {}", &today_string);
         Self{
             producoes: json!({
             "tipoData": "dtInicio",
@@ -184,7 +184,17 @@ impl Reqrequirementsrelatorios{
             "tags": "Almoxarifado",
             "semExcluidos": false,
             "semEstNaoControl": false,
-            "mostrarEstoqueNegativo": false,
+            "mostrarEstoqueNegativo": true,
+            "mostrarCodProprio": false,
+            "apresentarArquivados": false
+        }),
+            estoques_geral: json!({
+            "dia": &today_string,
+            "categoria": "",
+            "tags": "",
+            "semExcluidos": false,
+            "semEstNaoControl": false,
+            "mostrarEstoqueNegativo": true,
             "mostrarCodProprio": false,
             "apresentarArquivados": false
             })
@@ -265,7 +275,8 @@ enum RelatoriosEnum{
 pub struct Relatorios{
     pub producoes: Vec<Producao>,
     pub composicoes: Vec<Composicao>,
-    pub estoques: Vec<Estoque>
+    pub estoques: Vec<Estoque>,
+    pub estoques_geral: Vec<Estoque>
 }
 
 impl Relatorios{
@@ -282,8 +293,6 @@ impl Relatorios{
         let rel_prod_status = res_rel_prod.status();
         let rel_prod_text = res_rel_prod.text().await?;
 
-        println!("Relatorio Prod: {}", rel_prod_status);
-        println!("Relatorio Prod Text: {}", rel_prod_text);
         let producoes: Vec<Producao> = serde_json::from_str(&rel_prod_text)?;
         let res_rel_comp = client
             .post("https://api.egestor.com.br/api/v1/relatorios/composicoes")
@@ -294,7 +303,6 @@ impl Relatorios{
             .await?;
 
         let rel_comp_status = res_rel_comp.status();
-        println!("Relatorio Comp: {}", rel_comp_status);
         let composicoes: Vec<Composicao> = res_rel_comp.json().await?;
         let res_rel_est = client
             .post("https://api.egestor.com.br/api/v1/relatorios/estoqueDoDia")
@@ -305,13 +313,22 @@ impl Relatorios{
             .await?;
 
         let rel_est_status = res_rel_est.status();
-        println!("Relatorio Comp: {}", rel_est_status);
         let estoques: Vec<Estoque> = res_rel_est.json().await?;
+        let res_rel_est_geral = client
+            .post("https://api.egestor.com.br/api/v1/relatorios/estoqueDoDia")
+            .bearer_auth(&token.access_token)
+            .header("Content-Type", "application/json")
+            .json(&reqrequi.estoques_geral)
+            .send()
+            .await?;
+        let rel_est_geral_status = res_rel_est_geral.status();
+        let estoques_geral: Vec<Estoque> = res_rel_est_geral.json().await?;
 
         Ok(Relatorios{
             producoes,
             composicoes,
-            estoques
+            estoques,
+            estoques_geral
         })
 
     }
@@ -434,7 +451,7 @@ pub struct ItemRetirada{
 }
 
 #[derive(Serialize, Debug, Clone)]
-struct ItemResumo{
+pub struct ItemResumo{
     #[serde(rename="codProduto")]
     codproduto: u32,
     #[serde(rename="estoqueFinal")]
@@ -492,22 +509,41 @@ impl AjusteEstoque{
         self.carrinhoretirada.retain(|item| item.codigo != codigo)
     }
 
-    pub fn resumir(&mut self){
+    pub fn resumir(&mut self, estoque: Vec<Estoque>){
         if self.carrinhoretirada.is_empty(){
             println!("Adicione itens no carrinho, meu querido!")
         }else{
             for item in &self.carrinhoretirada{
-                let texto_item = &item.produto.to_lowercase();
-                let texto_item = &item.produto.trim();
-                if let Some(start) = &texto_item.find("(almoxarifado"){
-                    let inicio_codigo = start + "(almoxarifado".len();
-                    if let Some(fim_rel) = texto_item[inicio_codigo..].find(")"){
-                        let fim_codigo = inicio_codigo + fim_rel;
-                        let mut codigo = texto_item[inicio_codigo..fim_codigo].trim().to_string();
-                        codigo.retain(|c| c != ':');
+                let texto_item = &item.produto.trim().to_lowercase();
+                if item.tipo == TipoMovimento::Retirada{
+                    if let Some(start) = &texto_item.find("(almoxarifado"){
+                        let inicio_codigo = start + "(almoxarifado".len();
+                        if let Some(fim_rel) = texto_item[inicio_codigo..].find(")"){
+                            let fim_codigo = inicio_codigo + fim_rel;
+                            let mut codigo = texto_item[inicio_codigo..fim_codigo].trim().to_string();
+                            codigo.retain(|c| c != ':');
 
-                        println!("{}", codigo.trim())
-                    };
+                            if codigo.len() > 2{
+                                codigo = codigo.trim()[2..].to_string();
+                            };
+                            let codigo_sem_zeros = codigo.trim_start_matches('0').to_string();
+                            match codigo_sem_zeros.parse::<u32>(){
+                                Ok(codigo_num) =>{
+                                    if let Some(produto) = estoque.iter().find(|p| p.codigo == codigo_num){
+                                        println!("Produto conversao: cod:{}; nome:{}", produto.codigo, produto.produto);
+                                        self.resumoretirada.push(ItemResumo{
+                                            codproduto: produto.codigo,
+                                            estoquefinal: produto.estoque + item.quantidade
+                                        });
+                                    }else{
+                                        println!("Produto conversão não encontrado.")
+
+                                    }
+                                }
+                                Err(e) => println!("erro convertendo: {}", e),
+                            }
+                        };
+                    }
                 }
                 self.resumoretirada.push(ItemResumo{
                     codproduto: item.codigo,
