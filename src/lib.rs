@@ -453,9 +453,9 @@ pub struct ItemRetirada{
 #[derive(Serialize, Debug, Clone)]
 pub struct ItemResumo{
     #[serde(rename="codProduto")]
-    codproduto: u32,
+    pub codproduto: u32,
     #[serde(rename="estoqueFinal")]
-    estoquefinal: f32
+    pub estoquefinal: f32
 }
 
 #[derive(Debug, Clone)]
@@ -513,6 +513,7 @@ impl AjusteEstoque{
         if self.carrinhoretirada.is_empty(){
             println!("Adicione itens no carrinho, meu querido!")
         }else{
+            self.resumoretirada.clear();
             for item in &self.carrinhoretirada{
                 let texto_item = &item.produto.trim().to_lowercase();
                 if item.tipo == TipoMovimento::Retirada{
@@ -531,9 +532,10 @@ impl AjusteEstoque{
                                 Ok(codigo_num) =>{
                                     if let Some(produto) = estoque.iter().find(|p| p.codigo == codigo_num){
                                         println!("Produto conversao: cod:{}; nome:{}", produto.codigo, produto.produto);
+                                        println!("{}", &item.quantidade.abs());
                                         self.resumoretirada.push(ItemResumo{
                                             codproduto: produto.codigo,
-                                            estoquefinal: produto.estoque + item.quantidade
+                                            estoquefinal: produto.estoque + item.quantidade.abs()
                                         });
                                     }else{
                                         println!("Produto conversão não encontrado.")
@@ -552,7 +554,7 @@ impl AjusteEstoque{
             }
         };
     }
-    pub async fn realizar_operacao(self, client: Client, token: ERPToken){
+    pub async fn realizar_operacao(&self, client: Client, token: ERPToken)-> bool{
         let req: serde_json::Value = json!({
             "codContato": 40,
             "motivo": 10,
@@ -563,7 +565,7 @@ impl AjusteEstoque{
 
         let post = client
             .post("https://api.egestor.com.br/api/v1/ajusteEstoque")
-            .bearer_auth(token.access_token)
+            .bearer_auth(&token.access_token)
             .header("Content-Type", "application/json")
             .json(&req)
             .send()
@@ -574,14 +576,19 @@ impl AjusteEstoque{
                 if let Ok(body) = resp.text().await {
                     println!("Resposta: {}", body);
                 }
+                true
             }
-            Err(e) => println!("Erro: {}", e)
+            Err(e) => {
+                println!("Erro: {}", e);
+                false
+            }
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct AppLogic{
+    pub client: Client,
     pub token: ERPToken,
     pub reqs: Reqrequirementsrelatorios,
     pub relatorios: Relatorios,
@@ -597,6 +604,7 @@ impl AppLogic{
         let ajuste_estoque = AjusteEstoque::new();
 
         Ok(Self{
+            client,
             token,
             reqs,
             relatorios,
