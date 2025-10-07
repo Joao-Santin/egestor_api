@@ -182,7 +182,7 @@ impl Reqrequirementsrelatorios{
             "dia": &today_string,
             "categoria": "",
             "tags": "Almoxarifado",
-            "semExcluidos": false,
+            "semExcluidos": true,
             "semEstNaoControl": false,
             "mostrarEstoqueNegativo": true,
             "mostrarCodProprio": false,
@@ -531,8 +531,6 @@ impl AjusteEstoque{
                             match codigo_sem_zeros.parse::<u32>(){
                                 Ok(codigo_num) =>{
                                     if let Some(produto) = estoque.iter().find(|p| p.codigo == codigo_num){
-                                        println!("Produto conversao: cod:{}; nome:{}", produto.codigo, produto.produto);
-                                        println!("{}", &item.quantidade.abs());
                                         self.resumoretirada.push(ItemResumo{
                                             codproduto: produto.codigo,
                                             estoquefinal: produto.estoque + item.quantidade.abs()
@@ -572,14 +570,9 @@ impl AjusteEstoque{
             .await;
         match post{
             Ok(resp) => {
-                println!("Status: {}", resp.status());
-                if let Ok(body) = resp.text().await {
-                    println!("Resposta: {}", body);
-                }
                 true
             }
             Err(e) => {
-                println!("Erro: {}", e);
                 false
             }
         }
