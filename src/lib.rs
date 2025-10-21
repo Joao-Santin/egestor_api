@@ -482,6 +482,22 @@ impl AjusteEstoque{
         self
     }
 
+    pub fn get_itemretirada_by_id_e_quant(&mut self, codigo: u32, quant: f32, tipo_movimento: TipoMovimento) -> Result<ItemRetirada, String>{
+        if let Some(itemestoque) = self.estoque.iter_mut().find(|i| i.codigo == codigo){
+            let item = itemestoque.clone();
+            Ok(ItemRetirada{
+                codigo: codigo,
+                produto: item.produto,
+                tipo: tipo_movimento,
+                quantidade:quant,
+                estoqueatual:item.estoque
+            })
+            
+        }else{
+            Err("Deu ruim".to_string())
+        }
+    }
+
     pub fn add_item_carrinho(&mut self, mut item: ItemRetirada) -> &mut Self{
         if let Some(itemestoque) = self.estoque.iter_mut().find(|i| i.codigo == item.codigo){
             let i_item_estoque = itemestoque.estoque as f32;
@@ -497,7 +513,7 @@ impl AjusteEstoque{
             if let Some(itemlista) = self.carrinhoretirada.iter_mut().find(|i| i.codigo == item.codigo){
                 itemlista.quantidade += item.quantidade;
             }else{
-            self.carrinhoretirada.push(item);
+                self.carrinhoretirada.push(item);
             }
         }else{
             println!("Item nao encontrado em estoque")
